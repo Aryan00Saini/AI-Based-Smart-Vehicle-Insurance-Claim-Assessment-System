@@ -53,5 +53,10 @@ Thumbs.db
 runs/
 training/runs/
 training/data/
+datasets/
+*.zip
+*.tar.gz
+*.cache
 *.pt
 yolov8s-seg.onnx
+
