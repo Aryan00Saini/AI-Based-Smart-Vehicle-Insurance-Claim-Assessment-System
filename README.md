@@ -139,6 +139,3 @@ python demo_runner.py
 | **Policyholder** | `user1` | `user123` |
 
 ---
-
-## 📜 License
-Academic Major Project - Developed for Smart Vehicle Insurance Claim Assessment.
