@@ -1,0 +1,205 @@
+{
+  "project": "AI-Based Smart Vehicle Insurance Claim Assessment System",
+  "version": "1.0.0",
+  "created_at": "2026-09-04T15:10:00+05:30",
+  "last_updated": "2026-09-04T15:10:00+05:30",
+  "tasks": [
+    {
+      "task_id": "TASK-1",
+      "title": "Database Schema, Seed Data, and Storage Layer",
+      "description": "Implement PostgreSQL/SQLAlchemy models for vehicle tiers, part catalog, rate matrix, claims, line items, overrides, and photo hashes. Build seed script with realistic Indian automotive rate matrix data. Implement S3/MinIO storage client with local filesystem fallback.",
+      "status": "completed",
+      "completed_at": "2026-09-04T15:28:00+05:30",
+      "acceptance_criteria": [
+        "SQLAlchemy models defined for vehicle_tier, part_catalog, rate_matrix, claims, claim_photos, claim_line_items, claim_overrides, photo_hash_store",
+        "Seed script successfully loads 3 vehicle tiers (HATCHBACK, SEDAN, SUV), 9 standard parts, and rate matrix rows",
+        "Storage client supports put_object, get_object, and local dev fallback",
+        "Database tests pass verifying relationships and seed queries"
+      ],
+      "artifacts": [
+        "backend/app/core/config.py",
+        "backend/app/core/security.py",
+        "backend/app/db/database.py",
+        "backend/app/db/models.py",
+        "backend/app/db/seed.py",
+        "backend/app/services/storage.py",
+        "backend/tests/test_database_and_storage.py"
+      ]
+    },
+    {
+      "task_id": "TASK-1.1",
+      "title": "Fix: Replace passlib bcrypt wrap bug with native bcrypt hashing in security.py",
+      "description": "Passlib 1.7.4 fails on bcrypt 5.x due to 72-byte test in detect_wrap_bug. Switch to direct bcrypt hashing in backend/app/core/security.py.",
+      "status": "completed",
+      "acceptance_criteria": [
+        "Direct bcrypt hashing handles password hashing and verification without passlib error",
+        "Seed script runs without cryptographic initialization error"
+      ],
+      "artifacts": ["backend/app/core/security.py"]
+    },
+    {
+      "task_id": "TASK-2",
+      "title": "Computer Vision Inference & Mask Fusion Engine (Module 1)",
+      "description": "Implement standalone ONNX Runtime inference wrappers for Model 1 (Vehicle Parts, 9 classes) and Model 2 (Damage Types, 6 classes). Implement fuse_masks() computing intersection_area / part_area, severity grading (MINOR, MODERATE, SEVERE), and UNATTRIBUTED damage detection. Build visual overlay generator.",
+      "status": "completed",
+      "completed_at": "2026-09-04T15:37:00+05:30",
+      "acceptance_criteria": [
+        "Model 1 and Model 2 run independent inference on 640x640 letterboxed inputs",
+        "fuse_masks() accurately calculates intersection_area / part_area and maps to severity bands using DAMAGE_TYPE_WEIGHT",
+        "Damage outside parts flagged as UNATTRIBUTED",
+        "Unit tests pass for synthetic masks covering minor, moderate, severe, and unattributed conditions",
+        "Visual overlay generation produces annotated PNGs with part and damage contours"
+      ],
+      "artifacts": [
+        "backend/app/services/cv_inference.py",
+        "backend/app/services/mask_fusion.py",
+        "backend/tests/test_mask_fusion.py"
+      ]
+    },
+    {
+      "task_id": "TASK-3",
+      "title": "Cost Estimation Engine & Decision Engine (Modules 2 & 3)",
+      "description": "Implement deterministic cost calculation looking up rate_matrix. Implement Decision Engine evaluating rules E1 through E9, strict auto-approval whitelist, and auditable decision reasons.",
+      "status": "completed",
+      "completed_at": "2026-09-04T15:37:30+05:30",
+      "acceptance_criteria": [
+        "Cost calculation strictly applies repair-vs-replace rule (REPLACE if SEVERE, crack, shatter, or zero repair base)",
+        "Deductible applied deterministically: max(subtotal - deductible, 0)",
+        "Missing rate row triggers E8 escalation without crashing",
+        "Individual unit tests for each rule E1 through E9 and clean AUTO_APPROVED scenario",
+        "All decision tests pass with 100% rule coverage"
+      ],
+      "artifacts": [
+        "backend/app/services/cost_engine.py",
+        "backend/app/services/decision_engine.py",
+        "backend/tests/test_cost_engine.py",
+        "backend/tests/test_decision_engine.py"
+      ]
+    },
+    {
+      "task_id": "TASK-4",
+      "title": "Photo Validation & Fraud Heuristics Pipeline (Module 5)",
+      "description": "Implement Laplacian variance blur detection, vehicle presence check, perceptual hashing (imagehash.phash) duplicate detection with Hamming distance, and EXIF timestamp/GPS plausibility checks. Combine into additive explainable fraud score.",
+      "status": "completed",
+      "completed_at": "2026-09-04T15:38:35+05:30",
+      "acceptance_criteria": [
+        "Blurry images (variance < threshold) correctly rejected (triggers E9)",
+        "Vehicle presence validator checks vehicle area in frame",
+        "Duplicate photo check detects identical and recompressed photos from other claims (triggers E7)",
+        "EXIF checker flags timestamp discrepancies while treating missing GPS as soft signal",
+        "Unit tests pass for blur, duplicate, and EXIF scenarios"
+      ],
+      "artifacts": [
+        "backend/app/services/photo_validator.py",
+        "backend/tests/test_photo_validation.py"
+      ]
+    },
+    {
+      "task_id": "TASK-4.1",
+      "title": "Fix: Test isolation for photo hash store in test_photo_validation.py",
+      "description": "Perceptual hash collision across test cases due to deterministic synthetic pattern. Use unique noise pattern per test case or clean database fixture.",
+      "status": "completed",
+      "acceptance_criteria": [
+        "Test cases in test_photo_validation.py run with isolated hashes",
+        "All photo validation and fraud scoring tests pass"
+      ],
+      "artifacts": [
+        "backend/tests/test_photo_validation.py"
+      ]
+    },
+    {
+      "task_id": "TASK-5",
+      "title": "FastAPI Core Gateway & BackgroundTasks Async Pipeline (Module 4)",
+      "description": "Build Core Gateway with JWT auth (policyholder, surveyor, admin roles), claim submission endpoint, async background orchestration pipeline (photo validation -> CV inference -> fusion -> cost calculation -> decision -> DB update), claim retrieval, and surveyor override endpoint with audit trail.",
+      "status": "completed",
+      "completed_at": "2026-09-04T15:44:25+05:30",
+      "acceptance_criteria": [
+        "POST /api/v1/claims/submit accepts incident payload and photos, returns 202 SUBMITTED",
+        "BackgroundTasks processes claim to ASSESSED or SURVEYOR_REVIEW status",
+        "GET /api/v1/claims/{id} returns full assessment with line items and E1-E9 evaluation",
+        "POST /api/v1/claims/{id}/override records surveyor changes in claim_overrides table",
+        "POST /api/v1/claims/{id}/decision finalizes claim to APPROVED or REJECTED",
+        "Integration tests pass for complete submit-to-decision lifecycle"
+      ],
+      "artifacts": [
+        "backend/app/schemas/claim.py",
+        "backend/app/services/orchestrator.py",
+        "backend/app/api/auth.py",
+        "backend/app/api/claims.py",
+        "backend/app/api/rates.py",
+        "backend/app/api/router.py",
+        "backend/app/main.py",
+        "backend/tests/test_claims_api.py"
+      ]
+    },
+    {
+      "task_id": "TASK-5.1",
+      "title": "Fix: Pass detected parts to photo validator and harmonize Decimal assertions in API test",
+      "description": "Orchestrator called photo validator before CV parts detection resulting in vehicle coverage failure on synthetic test images. In test_claims_api.py, float comparison against Decimal string failed.",
+      "status": "completed",
+      "acceptance_criteria": [
+        "Orchestrator runs part detection or passes parts to validator to prevent false E9 triggers",
+        "Decimal comparisons in test_claims_api.py convert strings to float/Decimal",
+        "Full test_claims_api.py test suite passes"
+      ],
+      "artifacts": [
+        "backend/app/core/config.py",
+        "backend/app/services/orchestrator.py",
+        "backend/tests/test_claims_api.py"
+      ]
+    },
+    {
+      "task_id": "TASK-6",
+      "title": "Surveyor Review Portal & Policyholder Frontend UI",
+      "description": "Develop React + TypeScript + Tailwind CSS web portal with claim submission wizard, surveyor triage queue, interactive image annotation viewer with mask overlays, editable line-item cost table, fraud signal indicators, and override submission modal.",
+      "status": "completed",
+      "completed_at": "2026-09-04T15:49:30+05:30",
+      "acceptance_criteria": [
+        "Responsive, modern UI running via Vite",
+        "Claim list view with status badges, fraud alerts, and filter by status/date",
+        "Detailed inspection view showing original photo, AI mask overlays, and detection confidence",
+        "Editable line items table with dynamic total recalculation",
+        "Surveyor override and decision submission wired to backend API",
+        "Policyholder claim submission form tested with photo upload"
+      ],
+      "artifacts": [
+        "frontend/package.json",
+        "frontend/vite.config.ts",
+        "frontend/tailwind.config.js",
+        "frontend/src/types.ts",
+        "frontend/src/services/api.ts",
+        "frontend/src/components/Navbar.tsx",
+        "frontend/src/components/CanvasAnnotator.tsx",
+        "frontend/src/components/CostBreakdownTable.tsx",
+        "frontend/src/components/DecisionAuditCard.tsx",
+        "frontend/src/components/FraudInspectionCard.tsx",
+        "frontend/src/components/ClaimDetailModal.tsx",
+        "frontend/src/pages/SurveyorDashboard.tsx",
+        "frontend/src/pages/SubmitClaimPage.tsx",
+        "frontend/src/App.tsx",
+        "frontend/dist"
+      ]
+    },
+    {
+      "task_id": "TASK-7",
+      "title": "End-to-End Verification, Test Suites & System Demonstration",
+      "description": "Execute comprehensive end-to-end integration tests across all modules. Verify edge cases (E1-E9 triggers, multi-part damage, severe shatter, duplicate fraud, missing rate row). Provide demonstrator script showcasing the complete system flow.",
+      "status": "completed",
+      "completed_at": "2026-09-04T15:51:00+05:30",
+      "acceptance_criteria": [
+        "Full pytest test suite runs and passes with zero failures",
+        "Demonstrator script validates full lifecycle with real sample claim data",
+        "Complete system documentation and walkthrough created"
+      ],
+      "artifacts": [
+        "demo_runner.py",
+        "backend/tests/test_claims_api.py",
+        "backend/tests/test_cost_engine.py",
+        "backend/tests/test_database_and_storage.py",
+        "backend/tests/test_decision_engine.py",
+        "backend/tests/test_mask_fusion.py",
+        "backend/tests/test_photo_validation.py"
+      ]
+    }
+  ]
+}
