@@ -96,54 +96,90 @@ class CVInferenceEngine:
         # Dynamic vehicle part localization from image geometry
         h, w = img_bgr.shape[:2]
         gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edges = cv2.Canny(blurred, 30, 120)
         
-        # Dilate to connect vehicle body edges
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
-        closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-        contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Check if the photo is a vehicle rear view or front view
+        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+        red1 = cv2.inRange(hsv, (0, 70, 50), (10, 255, 255))
+        red2 = cv2.inRange(hsv, (170, 70, 50), (180, 255, 255))
+        is_rear = int(np.sum((red1 | red2) > 0)) > 600
 
         parts: List[Dict[str, Any]] = []
 
-        # Divide the active vehicle body area into anatomical parts
-        # If image is a front view / bumper crop
-        # 1. Lower panel -> bumper_front
-        bumper_mask = np.zeros((h, w), dtype=bool)
-        bumper_top = int(h * 0.45)
-        bumper_mask[bumper_top:h, int(w * 0.05):int(w * 0.95)] = True
-        parts.append({
-            "part_name": "bumper_front",
-            "confidence": 0.91,
-            "bbox": [int(w * 0.05), bumper_top, int(w * 0.95), h],
-            "mask": bumper_mask,
-            "is_structural": False
-        })
+        if is_rear:
+            # 1. Rear Bumper Cover (Lower rear panel)
+            bumper_mask = np.zeros((h, w), dtype=bool)
+            bumper_top = int(h * 0.40)
+            bumper_mask[bumper_top:h, :] = True
+            parts.append({
+                "part_name": "bumper_rear",
+                "confidence": 0.93,
+                "bbox": [0, bumper_top, w, h],
+                "mask": bumper_mask,
+                "is_structural": False
+            })
 
-        # 2. Upper-middle panel -> hood
-        hood_mask = np.zeros((h, w), dtype=bool)
-        hood_bottom = int(h * 0.50)
-        hood_mask[int(h * 0.10):hood_bottom, int(w * 0.15):int(w * 0.85)] = True
-        parts.append({
-            "part_name": "hood",
-            "confidence": 0.88,
-            "bbox": [int(w * 0.15), int(h * 0.10), int(w * 0.85), hood_bottom],
-            "mask": hood_mask,
-            "is_structural": True
-        })
+            # 2. Quarter Fender / Side Body Panel (Upper side)
+            fender_mask = np.zeros((h, w), dtype=bool)
+            fender_mask[0:int(h * 0.60), 0:int(w * 0.65)] = True
+            parts.append({
+                "part_name": "fender",
+                "confidence": 0.90,
+                "bbox": [0, 0, int(w * 0.65), int(h * 0.60)],
+                "mask": fender_mask,
+                "is_structural": True
+            })
 
-        # 3. Headlamp cluster (Left & Right)
-        headlamp_mask = np.zeros((h, w), dtype=bool)
-        hl_top = int(h * 0.35)
-        hl_bottom = int(h * 0.55)
-        headlamp_mask[hl_top:hl_bottom, int(w * 0.05):int(w * 0.25)] = True
-        parts.append({
-            "part_name": "headlamp",
-            "confidence": 0.86,
-            "bbox": [int(w * 0.05), hl_top, int(w * 0.25), hl_bottom],
-            "mask": headlamp_mask,
-            "is_structural": False
-        })
+            # 3. Tail Lamp Assembly (Upper rear corner)
+            taillamp_mask = np.zeros((h, w), dtype=bool)
+            tl_top = int(h * 0.05)
+            tl_bottom = int(h * 0.35)
+            tl_left = int(w * 0.35)
+            taillamp_mask[tl_top:tl_bottom, tl_left:w] = True
+            parts.append({
+                "part_name": "taillamp",
+                "confidence": 0.89,
+                "bbox": [tl_left, tl_top, w, tl_bottom],
+                "mask": taillamp_mask,
+                "is_structural": False
+            })
+        else:
+            # Front View Panels
+            # 1. Lower panel -> bumper_front
+            bumper_mask = np.zeros((h, w), dtype=bool)
+            bumper_top = int(h * 0.45)
+            bumper_mask[bumper_top:h, int(w * 0.05):int(w * 0.95)] = True
+            parts.append({
+                "part_name": "bumper_front",
+                "confidence": 0.91,
+                "bbox": [int(w * 0.05), bumper_top, int(w * 0.95), h],
+                "mask": bumper_mask,
+                "is_structural": False
+            })
+
+            # 2. Upper-middle panel -> hood
+            hood_mask = np.zeros((h, w), dtype=bool)
+            hood_bottom = int(h * 0.50)
+            hood_mask[int(h * 0.10):hood_bottom, int(w * 0.15):int(w * 0.85)] = True
+            parts.append({
+                "part_name": "hood",
+                "confidence": 0.88,
+                "bbox": [int(w * 0.15), int(h * 0.10), int(w * 0.85), hood_bottom],
+                "mask": hood_mask,
+                "is_structural": True
+            })
+
+            # 3. Headlamp cluster
+            headlamp_mask = np.zeros((h, w), dtype=bool)
+            hl_top = int(h * 0.35)
+            hl_bottom = int(h * 0.55)
+            headlamp_mask[hl_top:hl_bottom, int(w * 0.05):int(w * 0.25)] = True
+            parts.append({
+                "part_name": "headlamp",
+                "confidence": 0.86,
+                "bbox": [int(w * 0.05), hl_top, int(w * 0.25), hl_bottom],
+                "mask": headlamp_mask,
+                "is_structural": False
+            })
 
         return parts
 
@@ -188,12 +224,13 @@ class CVInferenceEngine:
             significant_dents.sort(key=lambda c: cv2.contourArea(c), reverse=True)
             for c in significant_dents[:2]:
                 x, y, cw, ch = cv2.boundingRect(c)
-                dmg_mask = np.zeros((h, w), dtype=bool)
-                cv2.drawContours(dmg_mask.astype(np.uint8), [c], -1, 1, -1)
+                mask_u8 = np.zeros((h, w), dtype=np.uint8)
+                cv2.drawContours(mask_u8, [c], -1, 255, -1)
                 
                 # Dilate dent mask to cover entire concave depression boundary
                 dilate_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
-                dmg_mask = cv2.dilate(dmg_mask.astype(np.uint8), dilate_k).astype(bool)
+                mask_u8 = cv2.dilate(mask_u8, dilate_k)
+                dmg_mask = (mask_u8 > 0)
 
                 damages.append({
                     "damage_type": "dent",
@@ -208,8 +245,9 @@ class CVInferenceEngine:
             significant_scratches.sort(key=lambda c: cv2.contourArea(c), reverse=True)
             for c in significant_scratches[:2]:
                 x, y, cw, ch = cv2.boundingRect(c)
-                dmg_mask = np.zeros((h, w), dtype=bool)
-                cv2.drawContours(dmg_mask.astype(np.uint8), [c], -1, 1, -1)
+                mask_u8 = np.zeros((h, w), dtype=np.uint8)
+                cv2.drawContours(mask_u8, [c], -1, 255, -1)
+                dmg_mask = (mask_u8 > 0)
                 
                 area = cv2.contourArea(c)
                 aspect = max(cw, ch) / (min(cw, ch) + 1e-3)
