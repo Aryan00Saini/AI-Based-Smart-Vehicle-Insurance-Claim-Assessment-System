@@ -1,0 +1,14 @@
+path: C:\Major project\training\data\parts
+train: images/train
+val: images/val
+test: images/val
+names:
+  0: bumper_front
+  1: bumper_rear
+  2: door
+  3: fender
+  4: headlamp
+  5: taillamp
+  6: mirror
+  7: hood
+  8: windshield

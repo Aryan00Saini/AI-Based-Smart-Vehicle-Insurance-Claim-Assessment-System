@@ -76,6 +76,11 @@ An end-to-end autonomous software engineering and machine learning system for ve
 ├── data/
 │   ├── models/           # ONNX model files (parts and damage models)
 │   └── storage/          # Local file storage for uploads and overlay renders
+├── training/             # Model training & dataset pipeline
+│   ├── dataset_prep.py   # Dataset YAML generation & data bootstrapping
+│   ├── train_parts.py    # YOLOv8s-seg vehicle parts segmentation trainer
+│   ├── train_damage.py   # YOLOv8s-seg vehicle damage segmentation trainer
+│   └── export_models.py  # Standalone ONNX opset 17 export utility
 ├── frontend/
 │   ├── src/
 │   │   ├── components/   # UI components (Dashboard, Annotator, CostBreakdown, Modals)

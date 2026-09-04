@@ -48,3 +48,10 @@ data/storage/tests/*
 *.swo
 .DS_Store
 Thumbs.db
+
+# ML Training Runs & Checkpoints
+runs/
+training/runs/
+training/data/
+*.pt
+yolov8s-seg.onnx

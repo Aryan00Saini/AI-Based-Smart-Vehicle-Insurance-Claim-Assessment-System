@@ -60,9 +60,9 @@ def calculate_claim_costs(
     """
     tier = db.query(VehicleTier).filter_by(tier_name=vehicle_tier_name).first()
     if not tier:
-        # Default tier fallback
-        labor_rate_hr = Decimal("550.00")
-        tier_id = 1
+        # No silent fallback guessing: missing tier must invalidate rate matrix lookup (escalation E8)
+        labor_rate_hr = Decimal("0.00")
+        tier_id = None
     else:
         labor_rate_hr = tier.labor_rate_hr
         tier_id = tier.tier_id

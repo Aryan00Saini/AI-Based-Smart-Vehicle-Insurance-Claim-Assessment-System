@@ -1,0 +1,11 @@
+path: C:\Major project\training\data\damage
+train: images/train
+val: images/val
+test: images/val
+names:
+  0: scratch
+  1: dent
+  2: crack
+  3: shatter
+  4: paint_chip
+  5: misalignment
