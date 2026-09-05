@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
 from typing import Optional
-import boto3
-from botocore.exceptions import ClientError
 from backend.app.core.config import settings
 
 class StorageService:
@@ -12,8 +10,12 @@ class StorageService:
         self.local_dir.mkdir(parents=True, exist_ok=True)
         
         self.s3_client = None
+        self._client_error_class = None
         if self.backend == "s3":
             try:
+                import boto3
+                from botocore.exceptions import ClientError
+                self._client_error_class = ClientError
                 self.s3_client = boto3.client(
                     "s3",
                     endpoint_url=settings.S3_ENDPOINT_URL,
@@ -27,7 +29,7 @@ class StorageService:
                 except ClientError:
                     self.s3_client.create_bucket(Bucket=settings.S3_BUCKET_NAME)
             except Exception as e:
-                print(f"[StorageService] Warning: Could not connect to S3 ({e}). Falling back to local storage.")
+                print(f"[StorageService] Warning: Could not initialize S3 backend ({e}). Falling back to local storage.")
                 self.backend = "local"
 
     def put_file(self, file_bytes: bytes, key: str, content_type: str = "image/jpeg") -> str:
@@ -63,7 +65,7 @@ class StorageService:
             try:
                 self.s3_client.head_object(Bucket=settings.S3_BUCKET_NAME, Key=key)
                 return True
-            except ClientError:
+            except Exception:
                 return False
         else:
             return (self.local_dir / key).exists()
