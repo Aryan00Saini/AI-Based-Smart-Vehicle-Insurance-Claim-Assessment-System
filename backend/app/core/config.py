@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "AI-Based Smart Vehicle Insurance Claim Assessment System"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
-    CORS_ALLOWED_ORIGINS: str = os.getenv("CORS_ALLOWED_ORIGINS", "*")
     
     # Persistence
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'claims.db'}")
@@ -43,13 +42,13 @@ class Settings(BaseSettings):
     COSMETIC_DAMAGE_WHITELIST: tuple = ("scratch", "dent", "paint_chip")
     ALLOWED_SEVERITY_BANDS: tuple = ("MINOR", "MODERATE")
 
-    # Photo Upload Validation Settings
+    # Upload limits (server-side enforcement, matches frontend's stated "up to 10MB")
     MAX_UPLOAD_FILE_SIZE_MB: int = 10
-    ALLOWED_UPLOAD_CONTENT_TYPES: tuple = (
-        "image/jpeg",
-        "image/png",
-        "image/webp"
-    )
+    ALLOWED_UPLOAD_CONTENT_TYPES: tuple = ("image/jpeg", "image/png", "image/webp")
+
+    # CORS: comma-separated list of allowed frontend origins in production,
+    # e.g. "https://your-app.vercel.app". Defaults to "*" for local dev.
+    CORS_ALLOWED_ORIGINS: str = os.getenv("CORS_ALLOWED_ORIGINS", "*")
 
     model_config = SettingsConfigDict(
         env_file=(str(BASE_DIR / ".env"), ".env"),

@@ -1,6 +1,10 @@
 import { Claim, PartPricingResponse } from '../types';
 
-const API_BASE = '/api/v1';
+// In dev, Vite's proxy (see vite.config.ts) forwards '/api' to localhost:8000, so
+// the relative path works with no env var needed. In production (frontend and
+// backend deployed separately), set VITE_API_BASE_URL to the backend's full URL,
+// e.g. VITE_API_BASE_URL=https://your-api.onrender.com
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || ''}/api/v1`;
 
 export async function fetchClaims(statusFilter?: string): Promise<Claim[]> {
   const url = statusFilter ? `${API_BASE}/claims/?status_filter=${statusFilter}` : `${API_BASE}/claims/`;
