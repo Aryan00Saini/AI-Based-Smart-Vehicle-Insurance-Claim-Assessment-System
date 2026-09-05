@@ -182,12 +182,49 @@ export const SurveyorDashboard: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-700/60">
               {loading && claims.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
-                    <span className="text-xs">Loading claims from server...</span>
-                  </td>
-                </tr>
+                // Subtle loading skeleton state (5 rows)
+                <>
+                  {[...Array(5)].map((_, idx) => (
+                    <tr key={idx} className="animate-pulse border-l-4 border-l-slate-700/50">
+                      {/* ID & Policy */}
+                      <td className="py-4 px-4 space-y-2">
+                        <div className="h-3.5 bg-slate-700/60 rounded-md w-28"></div>
+                        <div className="h-2.5 bg-slate-700/30 rounded-md w-20"></div>
+                      </td>
+
+                      {/* Vehicle Details */}
+                      <td className="py-4 px-4 space-y-2">
+                        <div className="h-3.5 bg-slate-700/60 rounded-md w-24"></div>
+                        <div className="h-4 bg-slate-700/30 rounded-md w-16"></div>
+                      </td>
+
+                      {/* AI Decision */}
+                      <td className="py-4 px-4">
+                        <div className="h-5 bg-slate-700/40 rounded-full w-28"></div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-4">
+                        <div className="h-5 bg-slate-700/40 rounded-md w-20"></div>
+                      </td>
+
+                      {/* Subtotal */}
+                      <td className="py-4 px-4 text-right">
+                        <div className="h-3.5 bg-slate-700/40 rounded-md w-16 ml-auto"></div>
+                      </td>
+
+                      {/* Net Payable */}
+                      <td className="py-4 px-4 text-right">
+                        <div className="h-4 bg-slate-700/50 rounded-md w-20 ml-auto"></div>
+                      </td>
+
+                      {/* Action Button */}
+                      <td className="py-4 px-4 text-center">
+                        <div className="h-7 bg-slate-700/40 rounded-xl w-24 mx-auto"></div>
+                      </td>
+                    </tr>
+                  ))}
+                </>
               ) : filteredClaims.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">
