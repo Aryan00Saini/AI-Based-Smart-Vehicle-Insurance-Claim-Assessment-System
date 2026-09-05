@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Wrench, RefreshCw, AlertCircle, Sparkles, Tag, Layers } from 'lucide-react';
 import { LineItem, PartPricingOption } from '../types';
 import { PartPricingModal } from './PartPricingModal';
+import { getSeverityBadgeClass } from '../constants/theme';
+
 
 interface CostBreakdownTableProps {
   lineItems: LineItem[];
@@ -33,19 +35,6 @@ export const CostBreakdownTable: React.FC<CostBreakdownTableProps> = ({
     partCode: '',
     lineIndex: -1,
   });
-
-  const getSeverityBadgeClass = (severity: string) => {
-    switch (severity.toUpperCase()) {
-      case 'MINOR':
-        return 'bg-amber-500/10 text-amber-300 border-amber-500/30';
-      case 'MODERATE':
-        return 'bg-orange-500/10 text-orange-300 border-orange-500/30';
-      case 'SEVERE':
-        return 'bg-red-500/10 text-red-300 border-red-500/30';
-      default:
-        return 'bg-slate-700 text-slate-300 border-slate-600';
-    }
-  };
 
   const handleDecisionToggle = (index: number) => {
     if (!editable || !onLineItemChange) return;

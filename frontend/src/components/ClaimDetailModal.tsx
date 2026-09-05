@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { X, CheckCircle, XCircle, Edit3, ShieldAlert, History, UserCheck } from 'lucide-react';
+import { X, CheckCircle, XCircle, Edit3, ShieldAlert, History, UserCheck, Info } from 'lucide-react';
 import { Claim, LineItem } from '../types';
 import { CanvasAnnotator } from './CanvasAnnotator';
 import { CostBreakdownTable } from './CostBreakdownTable';
 import { DecisionAuditCard } from './DecisionAuditCard';
 import { FraudInspectionCard } from './FraudInspectionCard';
+import { ConfirmModal, ConfirmModalProps } from './ConfirmModal';
 import { recordOverride, finalizeDecision } from '../services/api';
+import { getStatusBadgeClass } from '../constants/theme';
 
 interface ClaimDetailModalProps {
   claim: Claim;
@@ -20,6 +22,9 @@ export const ClaimDetailModal: React.FC<ClaimDetailModalProps> = ({ claim, onClo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  // In-app modal state for replacing alert() and prompt()
+  const [modalConfig, setModalConfig] = useState<ConfirmModalProps | null>(null);
+
   const handleLineItemChange = (index: number, updatedItem: LineItem) => {
     const updated = [...editableLineItems];
     updated[index] = updatedItem;
@@ -31,9 +36,19 @@ export const ClaimDetailModal: React.FC<ClaimDetailModalProps> = ({ claim, onClo
 
   const handleSaveOverride = async () => {
     if (!overrideReason.trim()) {
-      alert('Please provide a justification for this override.');
+      setModalConfig({
+        isOpen: true,
+        title: 'Justification Required',
+        message: 'Please provide a justification note explaining this price, part, or severity adjustment before saving.',
+        type: 'alert',
+        confirmLabel: 'Understood',
+        confirmVariant: 'blue',
+        onConfirm: () => setModalConfig(null),
+        onClose: () => setModalConfig(null),
+      });
       return;
     }
+
     setIsSubmitting(true);
     try {
       await recordOverride(
@@ -46,26 +61,55 @@ export const ClaimDetailModal: React.FC<ClaimDetailModalProps> = ({ claim, onClo
       setStatusMessage('Override recorded successfully with full audit trail.');
       onRefresh();
     } catch (err: any) {
-      alert(err.message || 'Failed to record override');
+      setModalConfig({
+        isOpen: true,
+        title: 'Override Failed',
+        message: err.message || 'Failed to record override in database.',
+        type: 'alert',
+        confirmVariant: 'red',
+        onConfirm: () => setModalConfig(null),
+        onClose: () => setModalConfig(null),
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleFinalDecision = async (action: 'APPROVED' | 'REJECTED') => {
-    const remarks = prompt(`Enter surveyor remarks for finalizing claim as ${action}:`);
-    if (remarks === null) return;
-    setIsSubmitting(true);
-    try {
-      await finalizeDecision(claim.claim_id, surveyorId, action, remarks);
-      setStatusMessage(`Claim successfully finalized to ${action}.`);
-      onRefresh();
-      setTimeout(onClose, 1200);
-    } catch (err: any) {
-      alert(err.message || 'Failed to finalize decision');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const openFinalDecisionPrompt = (action: 'APPROVED' | 'REJECTED') => {
+    setModalConfig({
+      isOpen: true,
+      title: action === 'APPROVED' ? 'Formally Approve Claim' : 'Reject Claim',
+      message: `Enter surveyor notes and rationale for finalizing this claim as ${action}:`,
+      type: 'prompt',
+      confirmLabel: action === 'APPROVED' ? 'Confirm Approval' : 'Confirm Rejection',
+      cancelLabel: 'Cancel',
+      confirmVariant: action === 'APPROVED' ? 'emerald' : 'red',
+      promptPlaceholder: action === 'APPROVED' ? 'e.g. Damage inspected and estimate verified.' : 'e.g. Inconsistent damage pattern.',
+      initialPromptValue: action === 'APPROVED' ? 'Claim inspected and repair cost approved.' : '',
+      onClose: () => setModalConfig(null),
+      onConfirm: async (remarks) => {
+        setModalConfig(null);
+        setIsSubmitting(true);
+        try {
+          await finalizeDecision(claim.claim_id, surveyorId, action, remarks || 'Final decision recorded.');
+          setStatusMessage(`Claim successfully finalized to ${action}.`);
+          onRefresh();
+          setTimeout(onClose, 1200);
+        } catch (err: any) {
+          setModalConfig({
+            isOpen: true,
+            title: 'Action Failed',
+            message: err.message || 'Failed to finalize decision.',
+            type: 'alert',
+            confirmVariant: 'red',
+            onConfirm: () => setModalConfig(null),
+            onClose: () => setModalConfig(null),
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
+      },
+    });
   };
 
   return (
@@ -79,11 +123,7 @@ export const ClaimDetailModal: React.FC<ClaimDetailModalProps> = ({ claim, onClo
               <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-slate-700 text-slate-200">
                 {claim.claim_id.slice(0, 13)}...
               </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                claim.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
-                claim.status === 'REJECTED' ? 'bg-red-500/20 text-red-300' :
-                'bg-blue-500/20 text-blue-300'
-              }`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusBadgeClass(claim.status)}`}>
                 {claim.status}
               </span>
             </div>
@@ -103,15 +143,34 @@ export const ClaimDetailModal: React.FC<ClaimDetailModalProps> = ({ claim, onClo
         {/* Modal Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
           {statusMessage && (
-            <div className="p-3 bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs rounded-lg flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
+            <div className="p-3.5 bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs rounded-xl flex items-center gap-2 animate-fade-in">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
               <span>{statusMessage}</span>
             </div>
           )}
 
           {/* Top Section: Photo Canvas & Decision Engine side-by-side */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-6 space-y-4">
+            <div className="lg:col-span-6 space-y-3">
+              {/* Color Legend Strip above CanvasAnnotator */}
+              <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2 flex items-center justify-between text-xs">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Mask Legend:</span>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1 text-amber-400 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-amber-400"></span> Minor
+                  </span>
+                  <span className="flex items-center gap-1 text-orange-400 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-orange-500"></span> Moderate
+                  </span>
+                  <span className="flex items-center gap-1 text-red-400 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span> Severe
+                  </span>
+                  <span className="flex items-center gap-1 text-cyan-400 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400"></span> Part
+                  </span>
+                </div>
+              </div>
+
               <CanvasAnnotator photos={claim.photos} />
               <FraudInspectionCard claim={claim} />
             </div>
@@ -148,7 +207,7 @@ export const ClaimDetailModal: React.FC<ClaimDetailModalProps> = ({ claim, onClo
                     type="text"
                     value={surveyorId}
                     onChange={(e) => setSurveyorId(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -158,7 +217,7 @@ export const ClaimDetailModal: React.FC<ClaimDetailModalProps> = ({ claim, onClo
                     value={overrideReason}
                     onChange={(e) => setOverrideReason(e.target.value)}
                     placeholder="Enter reason for price, part, or severity adjustment..."
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -167,23 +226,23 @@ export const ClaimDetailModal: React.FC<ClaimDetailModalProps> = ({ claim, onClo
                 <button
                   onClick={handleSaveOverride}
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow transition-colors flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Save Override & Recalculate</span>
                 </button>
                 <button
-                  onClick={() => handleFinalDecision('APPROVED')}
+                  onClick={() => openFinalDecisionPrompt('APPROVED')}
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition-colors flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
                   <span>Formally Approve Claim</span>
                 </button>
                 <button
-                  onClick={() => handleFinalDecision('REJECTED')}
+                  onClick={() => openFinalDecisionPrompt('REJECTED')}
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold shadow transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold shadow transition-colors flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <XCircle className="w-3.5 h-3.5" />
                   <span>Reject Claim</span>
@@ -217,6 +276,9 @@ export const ClaimDetailModal: React.FC<ClaimDetailModalProps> = ({ claim, onClo
           )}
         </div>
       </div>
+
+      {/* In-app Confirm/Prompt Modal */}
+      {modalConfig && <ConfirmModal {...modalConfig} />}
     </div>
   );
 };

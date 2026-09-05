@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Layers, Eye, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { PhotoItem } from '../types';
 import { getStorageFileUrl } from '../services/api';
+import { THEME_COLORS } from '../constants/theme';
 
 interface CanvasAnnotatorProps {
   photos: PhotoItem[];
@@ -40,7 +41,7 @@ export const CanvasAnnotator: React.FC<CanvasAnnotatorProps> = ({ photos }) => {
                   key={idx}
                   onClick={() => setSelectedPhotoIndex(idx)}
                   className={`w-5 h-5 text-xs rounded font-mono ${
-                    idx === selectedPhotoIndex ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                    idx === selectedPhotoIndex ? 'bg-blue-600 text-white font-bold' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                   }`}
                 >
                   {idx + 1}
@@ -101,24 +102,23 @@ export const CanvasAnnotator: React.FC<CanvasAnnotatorProps> = ({ photos }) => {
           style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.15s ease-out' }}
           className="max-h-[460px] object-contain rounded select-none shadow-md"
           onError={(e) => {
-            // Fallback placeholder if storage server not ready
             (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect fill="%231e293b" width="400" height="300"/><text fill="%2394a3b8" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle">AI Annotated Photo Preview</text></svg>';
           }}
         />
       </div>
 
-      {/* Legend Footer */}
-      <div className="p-2.5 bg-slate-900/90 border-t border-slate-700 flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-400">
-        <span className="flex items-center gap-1.5">
+      {/* Standardized Legend Footer */}
+      <div className="p-2.5 bg-slate-900/90 border-t border-slate-700 flex flex-wrap items-center justify-center gap-4 text-[11px]">
+        <span className="flex items-center gap-1.5 text-cyan-400 font-medium">
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Part Silhouette
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 text-amber-400 font-medium">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Minor Severity
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 text-orange-400 font-medium">
           <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span> Moderate Severity
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 text-red-400 font-medium">
           <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Severe / Replace
         </span>
       </div>

@@ -1,14 +1,18 @@
 import React from 'react';
 import { CheckCircle2, AlertTriangle, ShieldAlert, Cpu } from 'lucide-react';
 import { Claim } from '../types';
+import { translateDecisionReason } from '../constants/reasons';
+import { THEME_COLORS } from '../constants/theme';
 
 interface DecisionAuditCardProps {
   claim: Claim;
 }
 
 export const DecisionAuditCard: React.FC<DecisionAuditCardProps> = ({ claim }) => {
-  const isAutoApproved = claim.decision === 'AUTO_APPROVED' || (claim.status === 'APPROVED' && (!claim.decision_reasons || claim.decision_reasons.length === 0));
-  
+  const isAutoApproved =
+    claim.decision === 'AUTO_APPROVED' ||
+    (claim.status === 'APPROVED' && (!claim.decision_reasons || claim.decision_reasons.length === 0));
+
   const rules = [
     { code: 'E1', name: 'Unattributed Damage', desc: 'No unassigned damage blobs outside vehicle parts' },
     { code: 'E2', name: 'Structural Integrity', desc: 'No damage to frame-adjacent components (hood, fender rails)' },
@@ -25,6 +29,7 @@ export const DecisionAuditCard: React.FC<DecisionAuditCardProps> = ({ claim }) =
 
   return (
     <div className="bg-slate-800/80 rounded-xl border border-slate-700 p-5 shadow-lg">
+      {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-700 mb-4">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg border border-indigo-500/30">
@@ -38,12 +43,12 @@ export const DecisionAuditCard: React.FC<DecisionAuditCardProps> = ({ claim }) =
 
         <div>
           {isAutoApproved ? (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${THEME_COLORS.decision.autoApproved.badge}`}>
               <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
               AUTO_APPROVED
             </span>
           ) : (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${THEME_COLORS.decision.surveyorReview.badge}`}>
               <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
               SURVEYOR_REVIEW
             </span>
@@ -51,20 +56,35 @@ export const DecisionAuditCard: React.FC<DecisionAuditCardProps> = ({ claim }) =
         </div>
       </div>
 
+      {/* Escalation Triggers list translated to plain English */}
       {reasons.length > 0 && (
-        <div className="mb-4 p-3.5 bg-amber-950/40 rounded-lg border border-amber-800/50">
-          <div className="flex items-center space-x-2 text-amber-400 text-xs font-semibold mb-1.5">
+        <div className="mb-4 p-3.5 bg-amber-950/40 rounded-xl border border-amber-800/50">
+          <div className="flex items-center space-x-2 text-amber-400 text-xs font-semibold mb-2">
             <ShieldAlert className="w-4 h-4" />
             <span>Escalation Triggers ({reasons.length}):</span>
           </div>
-          <ul className="space-y-1 pl-5 list-disc text-xs text-amber-200/90">
-            {reasons.map((r, i) => (
-              <li key={i}>{r}</li>
-            ))}
+          <ul className="space-y-1.5 text-xs text-amber-200/90">
+            {reasons.map((r, i) => {
+              const translated = translateDecisionReason(r);
+              return (
+                <li key={i} className="flex items-start space-x-2">
+                  <span className="text-amber-400 mt-0.5">•</span>
+                  <div className="flex-1 flex flex-wrap items-center gap-1.5">
+                    <span className="text-slate-200 font-medium">{translated.sentence}</span>
+                    {translated.code && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-900/60 text-amber-300 border border-amber-700/60">
+                        {translated.code}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
 
+      {/* Rules Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
         {rules.map((rule) => {
           const hasFired = reasons.some((r) => r.includes(rule.code));
