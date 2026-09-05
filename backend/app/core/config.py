@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'claims.db'}")
     
     # JWT Security
-    SECRET_KEY: str = "vehicle-claim-assessment-secret-key-super-secure-2026"
+    # Loaded from the SECRET_KEY environment variable (see .env.example).
+    # The fallback below is for local development ONLY — never rely on it
+    # in any deployed or publicly reachable environment.
+    SECRET_KEY: str = "dev-only-insecure-default-do-not-use-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 # 24 hours
     
@@ -40,7 +43,7 @@ class Settings(BaseSettings):
     ALLOWED_SEVERITY_BANDS: tuple = ("MINOR", "MODERATE")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(str(BASE_DIR / ".env"), ".env"),
         env_file_encoding="utf-8",
         extra="ignore"
     )
