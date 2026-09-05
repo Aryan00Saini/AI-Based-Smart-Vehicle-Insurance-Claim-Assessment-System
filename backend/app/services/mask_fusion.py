@@ -185,3 +185,60 @@ def generate_visual_overlay(
 
     cv2.addWeighted(damage_layer, 0.45, overlay, 0.55, 0, overlay)
     return overlay
+
+def deduplicate_cross_photo_line_items(all_line_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Merges line items from multiple photos that likely represent the same
+    physical damage, using (part_name, damage_type) as the primary merge key.
+    When a duplicate is found, keep the item with the higher combined
+    (part_confidence + damage_confidence) and discard the other,
+    rather than summing costs for both.
+    """
+    if not all_line_items:
+        return []
+
+    SEVERITY_RANK = {
+        "MINOR": 1,
+        "MODERATE": 2,
+        "SEVERE": 3
+    }
+
+    def _is_unattributed(item: Dict[str, Any]) -> bool:
+        return bool(
+            item.get("unattributed")
+            or str(item.get("part_name", "")).upper() == "UNATTRIBUTED"
+        )
+
+    def _pick_better_item(item1: Dict[str, Any], item2: Dict[str, Any]) -> Dict[str, Any]:
+        conf1 = float(item1.get("part_confidence", 0.0)) + float(item1.get("damage_confidence", 0.0))
+        conf2 = float(item2.get("part_confidence", 0.0)) + float(item2.get("damage_confidence", 0.0))
+        sev1 = SEVERITY_RANK.get(str(item1.get("severity_band", "MINOR")).upper(), 1)
+        sev2 = SEVERITY_RANK.get(str(item2.get("severity_band", "MINOR")).upper(), 1)
+
+        # If combined confidences are close (within 0.01), use severity band as tiebreaker
+        if abs(conf1 - conf2) < 0.01:
+            if sev1 > sev2:
+                return item1
+            elif sev2 > sev1:
+                return item2
+            return item1 if conf1 >= conf2 else item2
+
+        return item1 if conf1 > conf2 else item2
+
+    result: List[Dict[str, Any]] = []
+    attributed_groups: Dict[Tuple[str, str], int] = {}
+
+    for item in all_line_items:
+        if _is_unattributed(item):
+            # Unattributed items are never merged with each other
+            result.append(item)
+        else:
+            key = (str(item.get("part_name")), str(item.get("damage_type")))
+            if key not in attributed_groups:
+                attributed_groups[key] = len(result)
+                result.append(item)
+            else:
+                existing_idx = attributed_groups[key]
+                result[existing_idx] = _pick_better_item(result[existing_idx], item)
+
+    return result

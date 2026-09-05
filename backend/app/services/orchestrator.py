@@ -10,7 +10,9 @@ from backend.app.db.models import (
 from backend.app.services.storage import storage_service
 from backend.app.services.photo_validator import photo_validator
 from backend.app.services.cv_inference import cv_inference_engine
-from backend.app.services.mask_fusion import fuse_masks, generate_visual_overlay
+from backend.app.services.mask_fusion import (
+    fuse_masks, generate_visual_overlay, deduplicate_cross_photo_line_items
+)
 from backend.app.services.cost_engine import calculate_claim_costs
 from backend.app.services.decision_engine import (
     evaluate_claim, ClaimAssessmentInput, LineItemInput, Decision
@@ -118,6 +120,9 @@ def run_claim_assessment_pipeline(
             except Exception as e:
                 print(f"[Orchestrator] Error processing photo {photo.photo_id}: {e}")
                 photo_validation_passed = False
+
+        # Cross-photo deduplication: merge line items representing the same damage
+        all_fused_line_items = deduplicate_cross_photo_line_items(all_fused_line_items)
 
         # 5. Deterministic Cost Estimation
         cost_res = calculate_claim_costs(

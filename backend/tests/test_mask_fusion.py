@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
-from backend.app.services.mask_fusion import grade_severity, fuse_masks, generate_visual_overlay
+from backend.app.services.mask_fusion import (
+    grade_severity, fuse_masks, generate_visual_overlay, deduplicate_cross_photo_line_items
+)
 
 def test_grade_severity_formula():
     # Scratch (weight 1)
@@ -116,3 +118,115 @@ def test_generate_visual_overlay():
     overlay = generate_visual_overlay(img, parts, fused["line_items"])
     assert overlay.shape == (640, 640, 3)
     assert not np.array_equal(overlay, img) # overlay has been modified with contours & colors
+
+def test_deduplicate_cross_photo_same_part_damage_keeps_higher_conf():
+    item_photo1 = {
+        "part_name": "bumper_front",
+        "damage_type": "scratch",
+        "severity_band": "MINOR",
+        "part_confidence": 0.88,
+        "damage_confidence": 0.82, # sum = 1.70
+        "unattributed": False,
+        "rate_row_found": True
+    }
+    item_photo2 = {
+        "part_name": "bumper_front",
+        "damage_type": "scratch",
+        "severity_band": "MINOR",
+        "part_confidence": 0.95,
+        "damage_confidence": 0.93, # sum = 1.88
+        "unattributed": False,
+        "rate_row_found": True
+    }
+
+    result = deduplicate_cross_photo_line_items([item_photo1, item_photo2])
+    assert len(result) == 1
+    # Preserves the higher-confidence line item
+    assert result[0]["part_confidence"] == 0.95
+    assert result[0]["damage_confidence"] == 0.93
+
+def test_deduplicate_cross_photo_tiebreaker_prefers_higher_severity():
+    item_photo1 = {
+        "part_name": "door",
+        "damage_type": "dent",
+        "severity_band": "MODERATE",
+        "part_confidence": 0.90,
+        "damage_confidence": 0.90, # sum = 1.80
+        "unattributed": False,
+        "rate_row_found": True
+    }
+    item_photo2 = {
+        "part_name": "door",
+        "damage_type": "dent",
+        "severity_band": "SEVERE",
+        "part_confidence": 0.90,
+        "damage_confidence": 0.90, # sum = 1.80, tied confidence
+        "unattributed": False,
+        "rate_row_found": True
+    }
+
+    result = deduplicate_cross_photo_line_items([item_photo1, item_photo2])
+    assert len(result) == 1
+    # Tiebreaker chooses SEVERE over MODERATE so severity is never under-reported
+    assert result[0]["severity_band"] == "SEVERE"
+
+def test_deduplicate_cross_photo_different_parts_and_types_all_survive():
+    item1 = {
+        "part_name": "bumper_front",
+        "damage_type": "scratch",
+        "severity_band": "MINOR",
+        "part_confidence": 0.90,
+        "damage_confidence": 0.85,
+        "unattributed": False
+    }
+    item2 = {
+        "part_name": "bumper_front",
+        "damage_type": "dent", # different damage type on same part
+        "severity_band": "MODERATE",
+        "part_confidence": 0.90,
+        "damage_confidence": 0.85,
+        "unattributed": False
+    }
+    item3 = {
+        "part_name": "door", # different part
+        "damage_type": "scratch",
+        "severity_band": "MINOR",
+        "part_confidence": 0.92,
+        "damage_confidence": 0.88,
+        "unattributed": False
+    }
+
+    result = deduplicate_cross_photo_line_items([item1, item2, item3])
+    # None of these represent the same part+damage pair, all survive
+    assert len(result) == 3
+    assert {r["damage_type"] for r in result} == {"scratch", "dent"}
+    assert {r["part_name"] for r in result} == {"bumper_front", "door"}
+
+def test_deduplicate_cross_photo_unattributed_never_merged():
+    unattr1 = {
+        "part_name": "UNATTRIBUTED",
+        "damage_type": "scratch",
+        "severity_band": "SEVERE",
+        "part_confidence": 0.0,
+        "damage_confidence": 0.85,
+        "unattributed": True
+    }
+    unattr2 = {
+        "part_name": "UNATTRIBUTED",
+        "damage_type": "scratch",
+        "severity_band": "SEVERE",
+        "part_confidence": 0.0,
+        "damage_confidence": 0.90,
+        "unattributed": True
+    }
+
+    result = deduplicate_cross_photo_line_items([unattr1, unattr2])
+    # Unattributed items must never be merged across photos
+    assert len(result) == 2
+    assert all(r["unattributed"] is True for r in result)
+
+def test_deduplicate_cross_photo_empty_and_single():
+    assert deduplicate_cross_photo_line_items([]) == []
+    single = [{"part_name": "hood", "damage_type": "dent", "unattributed": False, "part_confidence": 0.9, "damage_confidence": 0.9}]
+    assert len(deduplicate_cross_photo_line_items(single)) == 1
+
