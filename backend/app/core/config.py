@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "AI-Based Smart Vehicle Insurance Claim Assessment System"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+    CORS_ALLOWED_ORIGINS: str = os.getenv("CORS_ALLOWED_ORIGINS", "*")
     
     # Persistence
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'claims.db'}")
