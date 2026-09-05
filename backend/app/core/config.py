@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     COSMETIC_DAMAGE_WHITELIST: tuple = ("scratch", "dent", "paint_chip")
     ALLOWED_SEVERITY_BANDS: tuple = ("MINOR", "MODERATE")
 
+    # Photo Upload Validation Settings
+    MAX_UPLOAD_FILE_SIZE_MB: int = 10
+    ALLOWED_UPLOAD_CONTENT_TYPES: tuple = (
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    )
+
     model_config = SettingsConfigDict(
         env_file=(str(BASE_DIR / ".env"), ".env"),
         env_file_encoding="utf-8",

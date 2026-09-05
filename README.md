@@ -57,7 +57,7 @@ An end-to-end autonomous software engineering and machine learning system for ve
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0, Pydantic v2, SQLite / PostgreSQL
 - **Computer Vision & ML**: ONNX Runtime, OpenCV, NumPy
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons
-- **Testing**: Pytest (38 automated unit & integration tests)
+- **Testing**: Pytest (45 automated unit & integration tests)
 
 ---
 
@@ -72,7 +72,7 @@ An end-to-end autonomous software engineering and machine learning system for ve
 │   │   ├── schemas/      # Pydantic data contracts
 │   │   ├── services/     # CV inference, mask fusion, cost engine, decision engine, fraud
 │   │   └── main.py       # FastAPI application entrypoint
-│   └── tests/            # 38 pytest test suites
+│   └── tests/            # 45 pytest test suites
 ├── data/
 │   ├── models/           # ONNX model files (parts and damage models)
 │   └── storage/          # Local file storage for uploads and overlay renders
@@ -112,6 +112,10 @@ cd AI-Based-Smart-Vehicle-Insurance-Claim-Assessment-System
 # Install Python dependencies
 pip install -r requirements.txt
 
+# Configure environment variables (copy the example and adjust as needed)
+cp .env.example .env
+# On Windows: copy .env.example .env
+
 # Seed the database and run backend
 python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -127,7 +131,7 @@ Access the Surveyor Review Portal at: `http://localhost:5173`
 
 ### 4. Running Automated Tests & Demos
 ```bash
-# Run all 38 pytest tests
+# Run all 45 pytest tests
 python -m pytest backend/tests/ -v
 
 # Run the 4-scenario end-to-end demonstration
@@ -138,9 +142,22 @@ python demo_runner.py
 
 ## 👥 Default Demo Credentials
 
+The backend exposes a working JWT auth API (`/api/v1/auth/login`, `/register`) seeded with the accounts below. Note: the frontend UI does not yet have a login screen wired up — both the claimant and surveyor views are currently open, unauthenticated tabs. The credentials below are for exercising the auth API directly (e.g. via `/docs`), not for logging into the web app yet.
+
 | Role | Username | Password |
 | :--- | :--- | :--- |
 | **Licensed Surveyor** | `surveyor1` | `surveyor123` |
 | **Policyholder** | `user1` | `user123` |
 
 ---
+
+## ⚠️ Known Limitations & Future Work
+
+This project is intentionally scoped as described below. These are deliberate design decisions, not oversights — noted here for transparency.
+
+1. **Scope is exterior cosmetic damage only** (`scratches`, `dents`, `cracks`, `shatter`, `paint chips`, `minor misalignment`). Structural, mechanical, or internal damage cannot be assessed from 2D exterior photos and is always escalated to a human surveyor by design.
+2. **Authentication is built but not yet connected to the frontend.** The JWT auth API is fully functional and tested; the React UI does not yet gate the claimant or surveyor views behind login. Planned as the next integration step.
+3. **Escalation logic (E1–E9) is rule-based, not learned.** Thresholds live in config (`backend/app/core/config.py`) rather than a trained policy model. This is a deliberate choice for auditability/explainability, common in insurance/fintech decision systems, but it means thresholds must be tuned manually rather than adapting automatically to new patterns.
+4. **Duplicate-photo fraud detection does a full historical scan** (compares against every stored photo hash). Fine at demo scale; a production version would need an indexed approximate-nearest-neighbor lookup instead.
+5. **Cross-photo damage deduplication uses a simple `(part, damage type)` matching key.** It correctly avoids double-charging for the same damage seen in multiple photos, but does not use spatial/geometric matching across camera angles — a more advanced version could use viewpoint-aware matching.
+6. **ONNX model weights (~96MB total) are committed directly to the repo** rather than tracked via Git LFS or a model registry, for simplicity of a single-clone setup.

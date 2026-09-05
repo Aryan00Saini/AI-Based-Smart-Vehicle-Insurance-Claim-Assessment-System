@@ -13,6 +13,7 @@ from backend.app.schemas.claim import (
 )
 from backend.app.services.storage import storage_service
 from backend.app.services.orchestrator import run_claim_assessment_pipeline
+from backend.app.core.config import settings
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
 
@@ -128,8 +129,34 @@ async def submit_claim_multipart(
     db.add(claim)
     db.flush()
 
+    max_bytes = settings.MAX_UPLOAD_FILE_SIZE_MB * 1024 * 1024
+
     for idx, upload in enumerate(photos):
         content = await upload.read()
+
+        if len(content) > max_bytes:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=(
+                    f"Photo '{upload.filename}' is "
+                    f"{len(content) / (1024 * 1024):.1f}MB, which exceeds the "
+                    f"{settings.MAX_UPLOAD_FILE_SIZE_MB}MB limit per photo."
+                )
+            )
+
+        content_type = (upload.content_type or "").lower()
+        if content_type not in settings.ALLOWED_UPLOAD_CONTENT_TYPES:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=(
+                    f"Photo '{upload.filename}' has unsupported type "
+                    f"'{content_type or 'unknown'}'. Allowed types: "
+                    f"{', '.join(settings.ALLOWED_UPLOAD_CONTENT_TYPES)}."
+                )
+            )
+
         s3_key = f"uploads/{policy_id}/{claim_id}_{idx}_{upload.filename}"
         storage_service.put_file(content, s3_key, upload.content_type or "image/jpeg")
 

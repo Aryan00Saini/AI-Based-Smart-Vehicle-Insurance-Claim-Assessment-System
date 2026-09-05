@@ -118,6 +118,35 @@ def test_submit_claim_and_assessment_pipeline():
     assert "payable_amount" in ai_jsonb
     assert ai_jsonb["decision"] == "AUTO_APPROVED"
 
+def test_submit_multipart_rejects_oversized_photo():
+    _, enc = cv2.imencode(".jpg", np.zeros((10, 10, 3), dtype=np.uint8))
+    oversized_content = enc.tobytes() + b"0" * (11 * 1024 * 1024)  # >10MB
+
+    resp = client.post(
+        "/api/v1/claims/submit-multipart",
+        data={
+            "policy_id": "POL-TEST-001",
+            "registration_no": "UK07ZZ9999",
+            "vehicle_tier": "SEDAN",
+        },
+        files={"photos": ("big_photo.jpg", oversized_content, "image/jpeg")},
+    )
+    assert resp.status_code == 413
+    assert "exceeds" in resp.json()["detail"]
+
+def test_submit_multipart_rejects_unsupported_content_type():
+    resp = client.post(
+        "/api/v1/claims/submit-multipart",
+        data={
+            "policy_id": "POL-TEST-001",
+            "registration_no": "UK07ZZ9999",
+            "vehicle_tier": "SEDAN",
+        },
+        files={"photos": ("photo.gif", b"not-really-a-gif", "image/gif")},
+    )
+    assert resp.status_code == 415
+    assert "unsupported" in resp.json()["detail"].lower()
+
 def test_surveyor_override_and_decision_lifecycle():
     b64_img = make_test_photo_base64(seed=202)
     payload = {
