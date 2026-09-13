@@ -60,3 +60,6 @@ datasets/
 *.pt
 yolov8s-seg.onnx
 
+# Project planning / AI agent artifacts — not part of source code
+antigravity_execution_plan.json
+implementation_plan.pdf
