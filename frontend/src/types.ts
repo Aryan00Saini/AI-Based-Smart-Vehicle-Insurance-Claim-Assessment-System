@@ -93,3 +93,10 @@ export interface PartPricingResponse {
     recycled: PartPricingOption;
   };
 }
+
+export interface ActivePolicy {
+  policy_id: string;
+  policyholder_name: string;
+  vehicle_reg_no: string;
+  vehicle_tier: string;
+}

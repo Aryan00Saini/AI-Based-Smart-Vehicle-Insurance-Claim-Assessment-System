@@ -117,44 +117,45 @@ export const ClaimStatusStepper: React.FC<ClaimStatusStepperProps> = ({ claimId,
   const decisionSummary = getDecisionSummary();
 
   return (
-    <div className="p-6 sm:p-8 bg-slate-900/90 border border-slate-700 rounded-2xl space-y-8 shadow-xl">
+    <div className="p-6 sm:p-8 bg-[#131929] border border-white/[0.12] rounded-2xl space-y-8 shadow-2xl">
       {/* Header Info */}
-      <div className="text-center space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-wider text-blue-400">Automated Triage Tracking</span>
-        <h3 className="text-xl font-bold text-white tracking-tight">Claim Processing Status</h3>
+      <div className="text-center space-y-1 font-mono">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400 px-2.5 py-0.5 rounded-full bg-cyan-400/10 border border-cyan-400/30">
+          Automated Triage Tracking
+        </span>
+        <h3 className="text-xl font-bold text-white tracking-tight pt-2 font-sans">Claim Processing Status</h3>
         <p className="text-xs text-slate-400">
-          Claim ID: <span className="font-mono font-bold text-slate-200">{claimId}</span>
+          Claim ID: <span className="font-mono font-bold text-cyan-300">{claimId}</span>
         </p>
       </div>
 
       {/* Horizontal Status Stepper */}
       <div className="relative py-4">
         {/* Connecting Line */}
-        <div className="absolute top-8 left-6 right-6 h-0.5 bg-slate-700 -translate-y-1/2 z-0 hidden sm:block" />
+        <div className="absolute top-8 left-6 right-6 h-0.5 bg-slate-700/60 -translate-y-1/2 z-0 hidden sm:block" />
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10 font-mono">
           {STEPS.map((step) => {
             const isCompleted = step.id < currentStep || (step.id === 4 && currentStep === 4);
             const isCurrent = step.id === currentStep && currentStep !== 4;
-            const isPending = step.id > currentStep;
 
             return (
               <div key={step.id} className="flex flex-col items-center text-center space-y-2">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                     isCompleted
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                      ? 'bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]'
                       : isCurrent
-                      ? 'bg-blue-600 text-white ring-4 ring-blue-600/20 animate-pulse'
-                      : 'bg-slate-800 border-2 border-slate-700 text-slate-500'
+                      ? 'bg-blue-600 text-white ring-4 ring-cyan-400/30 animate-pulse shadow-[0_0_15px_rgba(37,99,235,0.6)]'
+                      : 'bg-[#070A12] border border-white/[0.1] text-slate-500'
                   }`}
                 >
                   {isCompleted ? (
                     <CheckCircle2 className="w-5 h-5" />
                   ) : isCurrent ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin text-cyan-300" />
                   ) : (
-                    <span className="text-xs font-bold font-mono">{step.id}</span>
+                    <span className="text-xs font-bold">{step.id}</span>
                   )}
                 </div>
 
@@ -164,7 +165,7 @@ export const ClaimStatusStepper: React.FC<ClaimStatusStepperProps> = ({ claimId,
                       isCompleted
                         ? 'text-emerald-300'
                         : isCurrent
-                        ? 'text-blue-400 font-bold'
+                        ? 'text-cyan-300 font-bold'
                         : 'text-slate-500'
                     }`}
                   >
@@ -184,18 +185,18 @@ export const ClaimStatusStepper: React.FC<ClaimStatusStepperProps> = ({ claimId,
       <div
         className={`p-5 rounded-xl border text-left transition-all ${
           decisionSummary.type === 'approved'
-            ? 'bg-emerald-950/40 border-emerald-800/80 text-emerald-200'
+            ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
             : decisionSummary.type === 'review'
-            ? 'bg-blue-950/40 border-blue-800/80 text-blue-200'
+            ? 'bg-blue-950/40 border-cyan-400/40 text-blue-200 shadow-[0_0_20px_rgba(34,211,238,0.15)]'
             : decisionSummary.type === 'rejected'
-            ? 'bg-red-950/40 border-red-800/80 text-red-200'
-            : 'bg-slate-800/60 border-slate-700 text-slate-300'
+            ? 'bg-red-950/40 border-red-500/40 text-red-200 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
+            : 'bg-[#070A12] border-white/[0.08] text-slate-300'
         }`}
       >
         <div className="flex items-start space-x-3">
           <div className="mt-0.5 shrink-0">
             {decisionSummary.type === 'approved' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-            {decisionSummary.type === 'review' && <Clock className="w-5 h-5 text-blue-400" />}
+            {decisionSummary.type === 'review' && <Clock className="w-5 h-5 text-cyan-400" />}
             {decisionSummary.type === 'rejected' && <ShieldAlert className="w-5 h-5 text-red-400" />}
             {decisionSummary.type === 'pending' && <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />}
           </div>
@@ -208,14 +209,14 @@ export const ClaimStatusStepper: React.FC<ClaimStatusStepperProps> = ({ claimId,
 
       {/* Polling Notice if any */}
       {pollingError && (
-        <p className="text-xs text-amber-400 text-center">{pollingError}</p>
+        <p className="text-xs text-amber-400 text-center font-mono">{pollingError}</p>
       )}
 
       {/* Actions */}
       <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
         <button
           onClick={onReset}
-          className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center space-x-2"
+          className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-[0_0_16px_rgba(37,99,235,0.45)] hover:shadow-[0_0_24px_rgba(37,99,235,0.7)] transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
         >
           <span>File Another Claim</span>
           <ArrowRight className="w-4 h-4" />

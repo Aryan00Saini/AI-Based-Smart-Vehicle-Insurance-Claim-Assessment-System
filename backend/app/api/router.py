@@ -3,12 +3,14 @@ from fastapi import APIRouter, HTTPException, Response
 from backend.app.api.auth import router as auth_router
 from backend.app.api.claims import router as claims_router
 from backend.app.api.rates import router as rates_router
+from backend.app.api.policies import router as policies_router
 from backend.app.services.storage import storage_service
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
 api_router.include_router(claims_router)
 api_router.include_router(rates_router)
+api_router.include_router(policies_router)
 
 @api_router.get("/files/{file_path:path}")
 def serve_storage_file(file_path: str):
